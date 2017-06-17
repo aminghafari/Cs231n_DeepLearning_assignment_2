@@ -266,7 +266,10 @@ class FullyConnectedNet(object):
             Hs['1'], caches['1'] = affine_bn_relu_forward(X, W, b, gamma, beta, self.bn_params[0])
         else:
             Hs['1'], caches['1'] = affine_relu_forward(X, W, b)
-
+            
+        ## dropout
+        if self.use_dropout:
+            Hs['1'], caches['drop1'] = dropout_forward(Hs['1'], self.dropout_param)
 
         for i in range(1,self.num_layers-1):
             W, b = self.params['W'+str(i+1)], self.params['b'+str(i+1)]
@@ -275,6 +278,10 @@ class FullyConnectedNet(object):
                 Hs[str(i+1)], caches[str(i+1)]  = affine_bn_relu_forward(Hs[str(i)], W, b, gamma, beta, self.bn_params[i])
             else:
                 Hs[str(i+1)], caches[str(i+1)]  = affine_relu_forward(Hs[str(i)], W, b)
+                
+            # dropout
+            if self.use_dropout:
+                Hs[str(i+1)], caches['drop'+str(i+1)] = dropout_forward(Hs[str(i+1)], self.dropout_param)
             
         W, b = self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)]
         Hs[str(self.num_layers)], caches[str(self.num_layers)]  = affine_forward(Hs[str(self.num_layers-1)], W, b)
@@ -310,6 +317,8 @@ class FullyConnectedNet(object):
         douts[str(self.num_layers)], grads['W'+str(self.num_layers)], grads['b'+str(self.num_layers)] = affine_backward(grad_soft, caches[str(self.num_layers)])
         
         for i in range(self.num_layers-1, 0, -1):
+            if self.use_dropout:
+                douts[str(i+1)] = dropout_backward(douts[str(i+1)], caches['drop'+str(i)])
             if self.use_batchnorm:
                 douts[str(i)], grads['W'+str(i)], grads['b'+str(i)], grads['gamma'+str(i)], grads['beta'+str(i)] = affine_bn_relu_backward(douts[str(i+1)], caches[str(i)])
             else:
