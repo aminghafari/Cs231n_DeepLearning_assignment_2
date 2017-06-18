@@ -1,6 +1,6 @@
 from builtins import range
 import numpy as np
-
+import numpy.matlib
 
 def affine_forward(x, w, b):
     """
@@ -461,7 +461,43 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    x, w, b, conv_param = cache
+    
+    N, C, H, W = x.shape
+    F, C1, HH, WW = w.shape
+    
+    pad = conv_param['pad']
+    stride = conv_param['stride']
+    
+    Hp = int(1 + (H + 2 * pad - HH) / stride)
+    Wp = int(1 + (W + 2 * pad - WW) / stride)
+    
+    # gradients
+    dx = np.zeros_like(x)
+    dw = np.zeros_like(w)
+    
+    db = np.zeros_like(b)
+    dx_pad = np.pad(dx, [(0,0),(0,0),(pad,pad), (pad,pad)], 'constant', constant_values = [(0,0),(0,0),(0,0),(0,0)] )
+    x_pad  = np.pad(x , [(0,0),(0,0),(pad,pad), (pad,pad)], 'constant', constant_values = [(0,0),(0,0),(0,0),(0,0)] )
+    
+    # db
+    db = np.sum(dout,axis=(0,2,3))
+    
+    # dx
+    for k in range(F):
+        for i in range(Hp):
+            for j in range(Wp):
+                for l in range(N):                        
+                    dx_pad[l, :, stride*i:(stride*i+HH), stride*j:(stride*j+WW)] += dout[l, k, i, j]*w[k, :, :, :]
+    dx = dx_pad[:, :, pad:-pad, pad:-pad]
+    
+    # dw
+    for k in range(F):
+        for i in range(Hp):
+            for j in range(Wp):
+                for l in range(N):                        
+                    dw[k, :, :, :] += dout[l, k, i, j]*x_pad[l, :, stride*i:(stride*i+HH), stride*j:(stride*j+WW)]
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
